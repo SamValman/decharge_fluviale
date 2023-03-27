@@ -47,13 +47,17 @@ import gc
 #%% Wrapper
 
 
-def fineTune(newTrainingData=True, trainingFolder='',
-                             trainingData=[], balanceTrainingData=1, tileSize=32,
+def fineTune(newTrainingData=True, trainingDataLocation=r'E:\Mitacs\decharge_fluviale\Scripts\IsolatedRiverMaskFunctions', 
+                             trainingData=[], balanceTrainingData=1,
+                             
+                             trainingFolder='', 
+                             tileSize=32,
                              epochs=100, bs=6,
                              lr=0.001, lr_type='plain', 
+                             tile_dir = r'C:\Users\lgxsv2\TrainingData', 
                              loss_type='notfocal', alpha=1, gamma=2,
                              inc_2ndbatch=False, inc_neck=False,
-                             outfile='todaysmodel', 
+                             outfile='D:/Code/RiverTwin/ZZ_Models/M', 
                              saveModel=True
                              ):
     '''
@@ -66,12 +70,23 @@ def fineTune(newTrainingData=True, trainingFolder='',
         
     Parameters
     ----------
-    trainingData : TYPE
-        DESCRIPTION.
+    newTrainingData: Boolean
+        creates new tfrecords. This section is only need if True. 
+    TrainingDataLocation: path
+        location of train and train_label folders of tifs
+    TrainingData: List
+        list of image file names in format 'im.tif'
     balanceTrainingData: int
-        Default: None
-        if a value it will balance training data.
-        1 == balance, >1 == more land than water, <1 == more water than land.
+            Default: None
+            if a value it will balance training data.
+            1 == balance, >1 == more land than water, <1 == more water than land.    
+    tile_dir: path
+        location tiles will be stored at. - currently possibly the same as trainingFolder
+        
+        
+    trainingFolder : Str
+        location of tf record if already created
+
     hyperParameters : dict
         {epochs:int, 'batchsize':int, }.
     tileSize : Int
@@ -91,7 +106,7 @@ def fineTune(newTrainingData=True, trainingFolder='',
     if newTrainingData: 
         print('Tiling new training data')
         trainingFolder = CollectAndOrganiseCNNTrainingData(trainingData, 
-                                      tileSize, balanceTrainingData)
+                                      tileSize, balanceTrainingData, tile_dir, trainingDataLocation)
     else:
         print('Using pre-collected training data')
 
@@ -115,7 +130,7 @@ def fineTune(newTrainingData=True, trainingFolder='',
 ###############################################################################
 
 def CollectAndOrganiseCNNTrainingData(trainingData, tileSize,
-                                      balanceTrainingData):
+                                      balanceTrainingData, tile_dir, trainingDataLocation):
     '''
     Wrapper to do all the work to collect and organise training data
     
@@ -137,7 +152,7 @@ def CollectAndOrganiseCNNTrainingData(trainingData, tileSize,
 
     '''
     ## Section one:A - removes training files wihtout labels
-    im_list, label_list = ListUsableFileNames(trainingData)
+    im_list, label_list = ListUsableFileNames(trainingData, trainingDataLocation)
     print('Total number of images: ', len(im_list))
     
     ## Section one:B - creates pure tiles to train model
@@ -146,7 +161,7 @@ def CollectAndOrganiseCNNTrainingData(trainingData, tileSize,
     
     # balance training data as requested (saves regardless)
     ## Section one: c function to save and balance training data
-    path = pruneAndSave(X_train, y_train, balanceTrainingData, tileSize)
+    path = pruneAndSave(X_train, y_train, balanceTrainingData, tileSize, tile_dir)
         
         
         
@@ -157,7 +172,7 @@ def CollectAndOrganiseCNNTrainingData(trainingData, tileSize,
 
 #%% Section one: A: 
     
-def ListUsableFileNames(trainingData):
+def ListUsableFileNames(trainingData, trainingDataLocation):
     '''
     Checks if images have labels and returns the file path of those that do
     
@@ -179,14 +194,15 @@ def ListUsableFileNames(trainingData):
     im_list, label_list = [], []
     
     # list all label files available and cut to just their names
-    file_ls =  glob.glob(os.path.join('D:/FineTuning/combined/train_label/', '*.tif'))
-    file_ls = [x[35:] for x in file_ls]
+    path = os.path.join(trainingDataLocation, 'train_label')
+    file_ls =  glob.glob(os.path.join(path, '*.tif'))
+    file_ls = [os.path.basename(x) for x in file_ls]
     
     for i in trainingData:
         # checks if that image has a label
         if i in file_ls:
             # A :1 function
-            im, label = getPaths(i)
+            im, label = getPaths(i, trainingDataLocation)
 
             # join to list for return
             im_list.append(im)
@@ -196,7 +212,7 @@ def ListUsableFileNames(trainingData):
     return im_list, label_list   
 
 ### A: 1
-def getPaths(riverID):
+def getPaths(riverID, trainingDataLocation):
     '''
     gets paths for river images and labels 
     Parameters
@@ -213,8 +229,8 @@ def getPaths(riverID):
 
     '''
     # riverID = riverID +'.tif'
-    imPath = os.path.join(r'D:/FineTuning/combined/train/', riverID) 
-    labPath = os.path.join(r'D:/FineTuning/combined/train_label/', riverID) 
+    imPath = os.path.join(os.path.join(trainingDataLocation, 'train'), riverID) 
+    labPath = os.path.join(os.path.join(trainingDataLocation, 'train_label'), riverID)
     
 
     return imPath, labPath
@@ -365,7 +381,7 @@ def tileForCNN(im, label, tileSize):
 
 
 #%% Section one:C
-def pruneAndSave(X_train, y_train, balanceTrainingData, tileSize):
+def pruneAndSave(X_train, y_train, balanceTrainingData, tileSize, tile_dir):
     '''
     organises the balancing and saving of training data for the model
 
@@ -394,8 +410,8 @@ def pruneAndSave(X_train, y_train, balanceTrainingData, tileSize):
 
     '''
     #create_training_directory_to_save_into
-    parent_dir='D:/Training_data/temporary_tiles'
-    parent_dir = r'C:\Users\lgxsv2\TrainingData'
+    parent_dir=tile_dir
+    
 
     
     #extra folder name for two in a day
@@ -811,8 +827,8 @@ def saveModelAndOutputs(model, saveModel, outfile):
     
     
     # put in the model output section
-    parentDir = 'D:/Code/RiverTwin/ZZ_Models'
-    path = os.path.join(parentDir, outfile)
+    # need to convert and rewrite when time 
+    parentDir, path = outfile, outfile
     
     try:
         #make an outputs folder

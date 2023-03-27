@@ -17,9 +17,13 @@ from FineTune2 import fineTune
 
 gc.collect()
 #%% Fine Tune model
-trainingDataTifs = r'E:\Mitacs\decharge_fluviale\Scripts\IsolatedRiverMaskFunctions\train_stM\*.tif'
-FolderContents = glob.glob(trainingDataTifs)
-do soemthing with os.path.basepath here ****************** above lambda or something 
+trainingDataTifs = r'E:\Mitacs\decharge_fluviale\Scripts\IsolatedRiverMaskFunctions\train\*.tif'
+trainingDataTifs = r'E:\Mitacs\decharge_fluviale\Scripts\IsolatedRiverMaskFunctions\train\*.tif'
+FolderContents = [os.path.basename(x) for x in glob.glob(trainingDataTifs)] # gets all files needed
+# do soemthing with os.path.basepath here ****************** above lambda or something 
+trainingDataLocation=r'E:\Mitacs\decharge_fluviale\Scripts\IsolatedRiverMaskFunctions'
+outfile=r'E:\Mitacs\decharge_fluviale\Scripts\IsolatedRiverMaskFunctions\StM_20230222'
+tile_dir = r'C:\Users\lgxsv2\TrainingData'
 
 
 
@@ -28,14 +32,16 @@ do soemthing with os.path.basepath here ****************** above lambda or somet
 #%%
 fineTune(newTrainingData=True, trainingData=FolderContents,
                              balanceTrainingData=1, trainingFolder='',
-                             outfile='StM_20230222',
+                             outfile=outfile,
+                             tile_dir=tile_dir, 
+                             trainingDataLocation=trainingDataLocation,
                               epochs=10, bs=32, lr_type='plain',
                               tileSize=20)
 
 
 #%% ANN Section
 imPath = r'E:\Mitacs\decharge_fluviale\Rivers\Ste-Marguerite\raw\*.tif'
-fn_model = r"E:\Mitacs\decharge_fluviale\Scripts\IsolatedRiverMaskFunctions\M20\model"
+fn_model = r"E:\Mitacs\decharge_fluviale\Scripts\IsolatedRiverMaskFunctions\StM_20230222\model"
 output = r"E:\Mitacs\decharge_fluviale\Rivers\Ste-Marguerite\watermask"
 
 for i in glob.glob(imPath)[:]:
