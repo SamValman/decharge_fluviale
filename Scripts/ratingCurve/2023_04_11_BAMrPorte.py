@@ -29,7 +29,57 @@ in this case we wont use object orientated programming for now
 It is still lacking the predicted discharge but we can work with this current one for now 
 '''
 
+#%% Bam Priors from dataprep
 
+def bam_priors(data, variant):
+    # bam needs slope and da? for non amhg variants
+    
+    # reads param names from class (we can hard code these)
+    
+    # checks these against the names possible in settings. 
+    
+    
+    
+
+#%%
+bam_priors <- function(bamdata, 
+                       variant = c("manning_amhg", "manning", "amhg"), 
+                       ...) {
+  variant <- match.arg(variant)
+  if (variant != "amhg" && !attr(bamdata, "manning_ready"))
+    stop("bamdata must have slope and dA data for non-amhg variants.")
+  
+  force(bamdata)
+  paramset <- bam_settings("paramnames")
+  
+  myparams0 <- rlang::quos(..., .named = TRUE)
+  myparams <- do.call(settings::clone_and_merge, 
+                      args = c(list(options = bam_settings), myparams0))
+  
+  quoparams <- myparams()[-1] # first one is parameter set
+  params <- lapply(quoparams, rlang::eval_tidy, data = bamdata)
+  
+  if (!length(params[["logQ_sd"]]) == bamdata$nt) 
+    params$logQ_sd <- rep(params$logQ_sd, length.out = bamdata$nt)
+
+  if (!identical(dim(params[["sigma_man"]]), 
+                 as.integer(c(bamdata$nx, bamdata$nt)))) {
+    params$sigma_man <- matrix(rep(params$sigma_man, 
+                                   length.out = bamdata$nt * bamdata$nx),
+                               nrow = bamdata$nx)
+  }
+    
+  if (!identical(dim(params[["sigma_amhg"]]), 
+                 as.integer(c(bamdata$nx, bamdata$nt)))) {
+    params$sigma_amhg <- matrix(rep(params$sigma_amhg, 
+                                    length.out = bamdata$nt * bamdata$nx),
+                                nrow = bamdata$nx)
+  }
+  
+  out <- structure(params[paramset],
+                   class = c("bampriors"))
+  out
+}
 
 
 #%% Bam Estimate 
